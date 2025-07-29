@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
-import * as cheerio from 'cheerio'
 
 export async function POST(request) {
   try {
@@ -21,6 +20,7 @@ export async function POST(request) {
       timeout: 10000
     })
 
+    const cheerio = await import('cheerio')
     const $ = cheerio.load(response.data)
     
     // まん福サイト用の抽出ロジック
