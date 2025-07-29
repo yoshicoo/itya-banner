@@ -20,9 +20,32 @@ export async function POST(request) {
       timeout: 10000
     })
 
+    const html = response.data
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
+    if (nextDataMatch) {
+      try {
+        const json = JSON.parse(nextDataMatch[1])
+        const detail = json?.props?.pageProps?.serverItemDetail
+        if (detail) {
+          const productData = {
+            title: detail.name || '',
+            price: detail.donation ? String(detail.donation) : '',
+            municipality: detail.municipality?.name || '',
+            description: detail.description || '',
+            image: detail.images && detail.images[0] ? detail.images[0].url || detail.images[0] : null,
+            categories: detail.itemCategories?.map((c) => c.name) || [],
+            tags: []
+          }
+          return NextResponse.json(productData)
+        }
+      } catch (e) {
+        console.error('Failed to parse __NEXT_DATA__', e)
+      }
+    }
+
     const cheerio = await import('cheerio')
-    const $ = cheerio.load(response.data)
-    
+    const $ = cheerio.load(html)
+
     // まん福サイト用の抽出ロジック
     let productData = {}
 
