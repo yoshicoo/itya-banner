@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
-import * as cheerio from 'cheerio'
 
 export async function POST(request) {
   try {
@@ -21,49 +20,71 @@ export async function POST(request) {
       timeout: 10000
     })
 
+    // __NEXT_DATA__ スクリプトからデータを抽出
+    const match = response.data.match(
+      /<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/
+    )
+
+    if (match) {
+      const data = JSON.parse(match[1])
+      const item = data.props?.pageProps?.serverItemDetail
+
+      if (item) {
+        const productData = {
+          title: item.name || '',
+          description: item.description || '',
+          price: String(item.donation || ''),
+          municipality: item.municipality?.name || '',
+          image: item.images?.[0]?.url || null,
+          categories: item.itemCategories?.map((c) => c.name).filter(Boolean) || [],
+          tags: []
+        }
+
+        if (productData.image && productData.image.startsWith('/')) {
+          const urlObj = new URL(url)
+          productData.image = `${urlObj.origin}${productData.image}`
+        }
+
+        return NextResponse.json(productData)
+      }
+    }
+
+    const cheerio = await import('cheerio')
     const $ = cheerio.load(response.data)
-    
-    // まん福サイト用の抽出ロジック
+
     let productData = {}
 
-    // タイトルの抽出を試みる
-    productData.title = 
+    productData.title =
       $('h1.item-title').text().trim() ||
       $('[class*="title"]').first().text().trim() ||
       $('h1').first().text().trim() ||
       $('title').text().replace('【まん福】', '').trim()
 
-    // 価格の抽出
-    productData.price = 
+    productData.price =
       $('[class*="price"], [class*="amount"]').text().replace(/[^\d]/g, '') ||
       $('.donation-amount').text().replace(/[^\d]/g, '') ||
       '10000'
 
-    // 自治体名の抽出
-    productData.municipality = 
+    productData.municipality =
       $('[class*="municipality"], [class*="city"]').text().trim() ||
       $('.region').text().trim() ||
       '自治体名不明'
 
-    // 商品説明の抽出
-    productData.description = 
+    productData.description =
       $('[class*="description"], .item-description').text().trim() ||
       $('meta[name="description"]').attr('content') ||
       ''
 
-    // 画像の抽取
-    productData.image = 
+    productData.image =
       $('img[class*="item"], img[class*="product"]').first().attr('src') ||
       $('img').not('[src*="logo"], [src*="icon"]').first().attr('src') ||
       null
 
-    // 画像URLが相対パスの場合は絶対パスに変換
     if (productData.image && productData.image.startsWith('/')) {
       const urlObj = new URL(url)
       productData.image = `${urlObj.origin}${productData.image}`
     }
 
-    // カテゴリやタグの抽出
     productData.categories = []
     productData.tags = []
 
