@@ -3,7 +3,13 @@ import axios from 'axios'
 
 export async function POST(request) {
   try {
-    const { url } = await request.json()
+    const {
+      url,
+      titleLength = 40,
+      descriptionLength = 80,
+    } = await request.json()
+
+    let productData = {}
     
     if (!url) {
       return NextResponse.json(
@@ -27,7 +33,7 @@ export async function POST(request) {
         const json = JSON.parse(nextDataMatch[1])
         const detail = json?.props?.pageProps?.serverItemDetail
         if (detail) {
-          const productData = {
+          productData = {
             title: detail.name || '',
             price: detail.donation ? String(detail.donation) : '',
             municipality: detail.municipality?.name || '',
@@ -36,7 +42,6 @@ export async function POST(request) {
             categories: detail.itemCategories?.map((c) => c.name) || [],
             tags: []
           }
-          return NextResponse.json(productData)
         }
       } catch (e) {
         console.error('Failed to parse __NEXT_DATA__', e)
@@ -46,49 +51,90 @@ export async function POST(request) {
     const cheerio = await import('cheerio')
     const $ = cheerio.load(html)
 
-    // まん福サイト用の抽出ロジック
-    let productData = {}
+    if (!productData.title) {
+      productData = {}
 
-    // タイトルの抽出を試みる
-    productData.title = 
-      $('h1.item-title').text().trim() ||
-      $('[class*="title"]').first().text().trim() ||
-      $('h1').first().text().trim() ||
-      $('title').text().replace('【まん福】', '').trim()
+      // タイトルの抽出を試みる
+      productData.title =
+        $('h1.item-title').text().trim() ||
+        $('[class*="title"]').first().text().trim() ||
+        $('h1').first().text().trim() ||
+        $('title').text().replace('【まん福】', '').trim()
 
-    // 価格の抽出
-    productData.price = 
-      $('[class*="price"], [class*="amount"]').text().replace(/[^\d]/g, '') ||
-      $('.donation-amount').text().replace(/[^\d]/g, '') ||
-      '10000'
+      // 価格の抽出
+      productData.price =
+        $('[class*="price"], [class*="amount"]').text().replace(/[^\d]/g, '') ||
+        $('.donation-amount').text().replace(/[^\d]/g, '') ||
+        '10000'
 
-    // 自治体名の抽出
-    productData.municipality = 
-      $('[class*="municipality"], [class*="city"]').text().trim() ||
-      $('.region').text().trim() ||
-      '自治体名不明'
+      // 自治体名の抽出
+      productData.municipality =
+        $('[class*="municipality"], [class*="city"]').text().trim() ||
+        $('.region').text().trim() ||
+        '自治体名不明'
 
-    // 商品説明の抽出
-    productData.description = 
-      $('[class*="description"], .item-description').text().trim() ||
-      $('meta[name="description"]').attr('content') ||
-      ''
+      // 商品説明の抽出
+      productData.description =
+        $('[class*="description"], .item-description').text().trim() ||
+        $('meta[name="description"]').attr('content') ||
+        ''
 
-    // 画像の抽取
-    productData.image = 
-      $('img[class*="item"], img[class*="product"]').first().attr('src') ||
-      $('img').not('[src*="logo"], [src*="icon"]').first().attr('src') ||
-      null
+      // 画像の抽取
+      productData.image =
+        $('img[class*="item"], img[class*="product"]').first().attr('src') ||
+        $('img').not('[src*="logo"], [src*="icon"]').first().attr('src') ||
+        null
 
-    // 画像URLが相対パスの場合は絶対パスに変換
-    if (productData.image && productData.image.startsWith('/')) {
-      const urlObj = new URL(url)
-      productData.image = `${urlObj.origin}${productData.image}`
+      // 画像URLが相対パスの場合は絶対パスに変換
+      if (productData.image && productData.image.startsWith('/')) {
+        const urlObj = new URL(url)
+        productData.image = `${urlObj.origin}${productData.image}`
+      }
+
+      // カテゴリやタグの抽出
+      productData.categories = []
+      productData.tags = []
     }
 
-    // カテゴリやタグの抽出
-    productData.categories = []
-    productData.tags = []
+    // ChatGPTでタイトルと紹介文を指定文字数に収める
+    if (process.env.OPENAI_API_KEY && (productData.title || productData.description)) {
+      try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: '短い日本語のタイトルと紹介文をJSON形式で返してください。',
+              },
+              {
+                role: 'user',
+                content: `タイトル:${productData.title}\n紹介文:${productData.description}\nタイトルは${titleLength}文字以内、紹介文は${descriptionLength}文字以内で要約し、{"title":"...","description":"..."}で返してください。`,
+              },
+            ],
+            temperature: 0.2,
+          }),
+        })
+        const data = await res.json()
+        const content = data.choices?.[0]?.message?.content
+        if (content) {
+          try {
+            const trimmed = JSON.parse(content)
+            if (trimmed.title) productData.title = trimmed.title
+            if (trimmed.description) productData.description = trimmed.description
+          } catch (e) {
+            console.error('JSON parse error from OpenAI:', e)
+          }
+        }
+      } catch (err) {
+        console.error('OpenAI API error:', err)
+      }
+    }
 
     return NextResponse.json(productData)
 

@@ -8,6 +8,8 @@ export default function Home() {
   const [productData, setProductData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [titleLength, setTitleLength] = useState(40)
+  const [descriptionLength, setDescriptionLength] = useState(80)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,7 +23,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, titleLength, descriptionLength }),
       })
 
       if (!response.ok) {
@@ -59,6 +61,32 @@ export default function Home() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+            </div>
+            <div className="mb-4 grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="titleLength" className="block text-sm font-medium text-gray-700 mb-2">
+                  タイトル文字数
+                </label>
+                <input
+                  type="number"
+                  id="titleLength"
+                  value={titleLength}
+                  onChange={(e) => setTitleLength(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="descriptionLength" className="block text-sm font-medium text-gray-700 mb-2">
+                  紹介文文字数
+                </label>
+                <input
+                  type="number"
+                  id="descriptionLength"
+                  value={descriptionLength}
+                  onChange={(e) => setDescriptionLength(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             <button
               type="submit"
