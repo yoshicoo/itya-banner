@@ -1,0 +1,110 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+// インストールと起動手順
+
+## 1. プロジェクトセットアップ
+
+```bash
+# プロジェクトフォルダを作成
+mkdir furusato-image-generator
+cd furusato-image-generator
+
+# package.jsonを作成してから依存関係をインストール
+npm init -y
+npm install next@14.0.0 react@^18 react-dom@^18 axios@^1.6.0 cheerio@^1.0.0-rc.12 html2canvas@^1.4.1 tailwindcss@^3.3.0 autoprefixer@^10.0.1 postcss@^8
+
+# 開発依存関係をインストール
+npm install -D eslint@^8 eslint-config-next@14.0.0
+
+# Tailwind CSSを初期化
+npx tailwindcss init -p
+```
+
+## 2. フォルダ構造
+```
+furusato-image-generator/
+├── app/
+│   ├── api/
+│   │   └── scrape/
+│   │       └── route.js
+│   ├── components/
+│   │   └── ImageGenerator.js
+│   ├── globals.css
+│   ├── layout.js
+│   └── page.js
+├── next.config.js
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── .env.local
+├── .gitignore
+└── README.md
+```
+
+## 3. 開発サーバー起動
+
+```bash
+npm run dev
+```
+
+ブラウザで http://localhost:3000 を開いてアクセス
+
+## 4. 本番ビルド
+
+```bash
+npm run build
+npm start
+```
+
+## 主な機能
+
+✅ まん福URLからの商品情報自動抽出  
+✅ 統一フォーマットでの画像生成  
+✅ 高品質PNG画像のダウンロード  
+✅ レスポンシブ対応UI  
+✅ エラーハンドリング  
+✅ CORS対応画像取得  
+✅ デバッグモード（開発環境）  
+
+## 技術的特徴
+
+- **Next.js 14**: App Routerを使用
+- **Cheerio**: サーバーサイドHTMLパース
+- **html2canvas**: クライアントサイド画像生成
+- **Tailwind CSS**: ユーティリティファーストCSS
+- **Axios**: HTTP通信
+- **CORS対応**: 外部画像の取得
